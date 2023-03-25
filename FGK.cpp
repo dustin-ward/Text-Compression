@@ -51,33 +51,81 @@ TreeNode* new_spot(TreeNode* node, TreeNode* root) {
     return temp;
 }
 
-void update_freq(TreeNode* node, TreeNode* root) {
-    while(!node->rootNode) {
-        TreeNode* replacement = new_spot(node,root);
-        
-        if(replacement && node->parent != replacement) {
-            std::swap(replacement->order, replacement->order);
-            
-            // Swap pointers
-            if(node->parent->left == node)
-                node->parent->left = replacement;
-            else
-                node->parent->right = replacement;
-            if(replacement->parent->left == replacement)
-                replacement->parent->left = node;
-            else
-                replacement->parent->right = node;
+void printNode(TreeNode* node) {
+    std::cout<<node->order<<" ("<<node->freq<<")";
+    if(node->leafNode) {
+        if(node->c)
+            std::cout<<" ["<<node->c<<"]";
+        else
+            std::cout<<" [NYT]";
+    }
+    else {
+        std::cout<<" [INT]";
+    }
+    std::cout<<std::endl;
+}
 
-            std::swap(node->parent, replacement->parent);
+void printTree(TreeNode* root) {
+    if(root->leafNode) return;
+    std::cout<<"Root: "; printNode(root);
+    if(!root->leafNode) {
+        if(root->left) std::cout<<"Left: ", printNode(root->left);
+        if(root->left) std::cout<<"Right: ", printNode(root->right);
+        if(root->left) printTree(root->left);
+        if(root->right) printTree(root->right);
+    }
+}
+
+void update_freq(TreeNode* node, TreeNode* root) {
+    // std::cout<<"Updating Tree"<<std::endl;
+    // std::cout<<"Starting at: "; printNode(node);
+    while(!node->rootNode) {
+        // std::cout<<"Considering: "; printNode(node);
+        TreeNode* replacement = new_spot(node,root);
+        // if(replacement) std::cout<<"New spot: ", printNode(replacement);
+        // else std::cout<<"No swap needed"<<std::endl;
+
+        if(replacement && node->parent != replacement) {
+            // std::cout<<"SWAPPING===\n"; printNode(node); std::cout<<"with\n"; printNode(replacement);
+            std::swap(node->order, replacement->order);
+            
+            // Check if siblings
+            TreeNode* parent = node->parent;
+            if((parent->left == node && parent->right == replacement)
+                    || (parent->left == replacement && parent->right == node)) {
+
+                TreeNode* temp = parent->left;
+                parent->left = parent->right;
+                parent->right = temp;
+
+            } else {
+                // Swap pointers
+                if(node->parent->left == node)
+                    node->parent->left = replacement;
+                else
+                    node->parent->right = replacement;
+                if(replacement->parent->left == replacement)
+                    replacement->parent->left = node;
+                else
+                    replacement->parent->right = node;
+
+                std::swap(node->parent, replacement->parent);
+            }
+
         }
 
         node->freq++;
+        // std::cout<<"Freq++ "; printNode(node);
         node = node->parent;
     }
     node->freq++;
+    // std::cout<<"Freq++ "; printNode(node);
+
+    // printTree(root);
 }
 
 std::vector<char>* encode(char* data, int N) {
+    // std::cout<<"ENCODE========="<<std::endl;
     std::vector<char>* output = new std::vector<char>;
     TreeNode* hfTree = new TreeNode(0,0,INT_MAX,nullptr,1,1);
 
@@ -138,9 +186,14 @@ std::vector<char>* encode(char* data, int N) {
             }
 
             // Create new leaf node
+            // std::cout<<"Splitting zero node"<<std::endl;
             TreeNode* left = new TreeNode(0,0,zeroNode->order - 2,zeroNode,1,0);  
             TreeNode* right = new TreeNode(cur,1,zeroNode->order - 1,zeroNode,0,0);  
             TreeNode* parent = zeroNode;
+
+            // std::cout<<"Left: "<<left->order<<" ("<<left->freq<<")"<<std::endl;
+            // std::cout<<"Right: "<<right->order<<" ("<<right->freq<<")"<<std::endl;
+            // std::cout<<"Parent: "<<parent->order<<" ("<<parent->freq<<")"<<std::endl;
 
             zeroNode->leafNode = 0;
             zeroNode->zeroNode = 0;
