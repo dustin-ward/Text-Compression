@@ -1,11 +1,11 @@
-### Text Compression Demonstration
+# Text Compression Demonstration
 
 This is a demonstration of various compression algorithms for my CPSC4660
 (Database Management Systems) class final project.
 
 ## Algorithms
 
-# Static Huffman Encoding
+### Static Huffman Encoding
 
 The static Huffman encoding algorithm works by first generating a frequency
 table from the source file, then building a Huffman tree from it. This tree
@@ -21,7 +21,7 @@ we would need to also save some representation of the tree so that the decoder
 can actually function. Lelewer & Hirschberg (1987) suggest that an optimal
 representation of the tree takes 2n bits.
 
-# Dynamic/Adaptive Huffman Encoding (FGK Algorithm)
+### Dynamic/Adaptive Huffman Encoding (FGK Algorithm)
 
 The dynamic version of Huffman encoding removes the need to perform an
 initial scan to generate the frequency table and Huffman tree. We instead
