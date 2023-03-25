@@ -1,3 +1,23 @@
+// Dynamic/Adaptive Huffman Encoding (FGK Algorithm)
+// Author: Dustin Ward
+// Date: March 24th, 2023
+//
+// This is an implementation of dynamic huffman encoding for my CPSC4660
+// (Database Managment Systems) class. The goal of this project is to
+// demonstrate the performance of various text compression methods.
+//
+// The dynamic version of Huffman encoding removes the need to perform an
+// initial scan to generate the frequency table and Huffman tree. We instead
+// create and update the Huffman tree as we encode the source file. This means
+// we no longer have to encode the entire tree along with the file, as it can
+// be generated during decoding process.
+//
+// This file (when supplied with a source file as the first argument) will
+// encode it using this dynamic huffman algorithm, and write it to file. The 
+// file has the name "compr_fgk.dat". Then the file will be decoded and written
+// to disk again as "orig_fgk.dat". We can diff the original source file with
+// "orig_huffman.dat" to ensure the process has not lost any data.
+
 #include <bits/stdc++.h>
 
 // Representation of a node in the Huffman tree
@@ -18,7 +38,7 @@ struct TreeNode {
         : c(c), freq(f), order(order), parent(parent), zeroNode(zero), rootNode(root) {};
 };
 
-const char END_TEXT = 3;
+const char END_TEXT = -1;
 
 // Start from node in the tree and follow path to root. Reversing this order
 // gives us the huffman code for the given symbol.
@@ -32,6 +52,8 @@ std::string genCode(TreeNode* node) {
     return code;
 }
 
+// Check throughout the tree to ensure that the sibling property is maintained.
+// If we determine our node is out of order, return the replacement spot for it
 TreeNode* new_spot(TreeNode* node, TreeNode* root) {
     TreeNode* temp = node;
 
@@ -46,47 +68,20 @@ TreeNode* new_spot(TreeNode* node, TreeNode* root) {
     else if(root->freq == temp->freq && root->order > temp->order)
         temp = root;
 
-    if(temp == node)
+    if(temp == node)    // No change needs to be made to the tree
         return nullptr;
     return temp;
 }
 
-void printNode(TreeNode* node) {
-    std::cout<<node->order<<" ("<<node->freq<<")";
-    if(node->leafNode) {
-        if(node->c)
-            std::cout<<" ["<<node->c<<"]";
-        else
-            std::cout<<" [NYT]";
-    }
-    else {
-        std::cout<<" [INT]";
-    }
-    std::cout<<std::endl;
-}
-
-void printTree(TreeNode* root) {
-    if(root->leafNode) return;
-    std::cout<<"Root: "; printNode(root);
-    if(!root->leafNode) {
-        if(root->left) std::cout<<"Left: ", printNode(root->left);
-        if(root->left) std::cout<<"Right: ", printNode(root->right);
-        if(root->left) printTree(root->left);
-        if(root->right) printTree(root->right);
-    }
-}
-
+// Update frequencies from node up the the root of the Huffman tree
 void update_freq(TreeNode* node, TreeNode* root) {
-    // std::cout<<"Updating Tree"<<std::endl;
-    // std::cout<<"Starting at: "; printNode(node);
     while(!node->rootNode) {
-        // std::cout<<"Considering: "; printNode(node);
+        // Check for sibling property
         TreeNode* replacement = new_spot(node,root);
-        // if(replacement) std::cout<<"New spot: ", printNode(replacement);
-        // else std::cout<<"No swap needed"<<std::endl;
 
+        // Do we need to make adjustments to the tree?
         if(replacement && node->parent != replacement) {
-            // std::cout<<"SWAPPING===\n"; printNode(node); std::cout<<"with\n"; printNode(replacement);
+            // Ensure order is maintained after swapping
             std::swap(node->order, replacement->order);
             
             // Check if siblings
@@ -114,18 +109,15 @@ void update_freq(TreeNode* node, TreeNode* root) {
 
         }
 
+        // Update frequency and move up tree
         node->freq++;
-        // std::cout<<"Freq++ "; printNode(node);
         node = node->parent;
     }
     node->freq++;
-    // std::cout<<"Freq++ "; printNode(node);
-
-    // printTree(root);
 }
 
+// Dynamically encode data to binary format
 std::vector<char>* encode(char* data, int N) {
-    // std::cout<<"ENCODE========="<<std::endl;
     std::vector<char>* output = new std::vector<char>;
     TreeNode* hfTree = new TreeNode(0,0,INT_MAX,nullptr,1,1);
 
@@ -140,12 +132,11 @@ std::vector<char>* encode(char* data, int N) {
     int dataPos = 0;
     while(dataPos < N) {
         char cur = data[dataPos++];
-        // std::cout<< "CUR CHAR: "<<cur<<std::endl;
 
+        // Does the current sybol already exist in the tree?
         if(symbolTable[cur]) {
-            // std::cout << "Found in table" << std::endl;
+            // Generate the code for this symbol
             std::string code = genCode(symbolTable[cur]);
-            // std::cout << "Code: " << code << std::endl;
     
             // Write code to output
             for(char c:code) {
@@ -161,15 +152,14 @@ std::vector<char>* encode(char* data, int N) {
                 buffer <<= 1;
             }
             
+            // Perform any operations on the tree to maintain sibling property
             update_freq(symbolTable[cur], hfTree);
         }
         else {
-            // std::cout << "Not Found in table" << std::endl;
             // Get code of zero node followed by full symbol
             std::string code = genCode(zeroNode);
             for(int i=7; i>=0; i--)
                 code += (cur & (1<<i)) ? "1" : "0";
-            // std::cout << "Code: " << code << std::endl;
     
             // Write code to output
             for(char c:code) {
@@ -185,24 +175,25 @@ std::vector<char>* encode(char* data, int N) {
                 buffer <<= 1;
             }
 
-            // Create new leaf node
+            // Create 2 new leaf nodes from the current zero node.
+            // The new zero node will be on the left, while the new symbol node
+            // will be on the right.
             // std::cout<<"Splitting zero node"<<std::endl;
             TreeNode* left = new TreeNode(0,0,zeroNode->order - 2,zeroNode,1,0);  
             TreeNode* right = new TreeNode(cur,1,zeroNode->order - 1,zeroNode,0,0);  
             TreeNode* parent = zeroNode;
 
-            // std::cout<<"Left: "<<left->order<<" ("<<left->freq<<")"<<std::endl;
-            // std::cout<<"Right: "<<right->order<<" ("<<right->freq<<")"<<std::endl;
-            // std::cout<<"Parent: "<<parent->order<<" ("<<parent->freq<<")"<<std::endl;
-
+            // Old zero node converted to internal node
             zeroNode->leafNode = 0;
             zeroNode->zeroNode = 0;
             zeroNode->left = left;
             zeroNode->right = right;
 
+            // Update entry in the sybol table to point to node in tree
             symbolTable[cur] = right;
             zeroNode = left;
 
+            // Perform any operations on the tree to maintain sibling property
             update_freq(parent, hfTree);
         }
     }
@@ -210,9 +201,23 @@ std::vector<char>* encode(char* data, int N) {
     // Flush remaining buffer
     output->push_back(buffer);
 
+    // Deallocate tree
+    std::stack<TreeNode*> S;
+    S.push(hfTree);
+    while(!S.empty()) {
+        TreeNode* cur = S.top();
+        S.pop();
+
+        if(cur->left) S.push(cur->left);
+        if(cur->right) S.push(cur->right);
+
+        delete cur;
+    }
+    
     return output;
 }
 
+// Dynamically decode data from binary format
 std::vector<char>* decode(char* data, int N) {
     std::vector<char>* output = new std::vector<char>;
     TreeNode* hfTree = new TreeNode(0,0,INT_MAX,nullptr,1,1);
@@ -227,61 +232,80 @@ std::vector<char>* decode(char* data, int N) {
     int bitIdx = 7;
     int dataPos = 0;
     while(dataPos < N) {
-        // std::cout << "BUFFER: " << buffer << std::endl;
+        // Start from root of Huffman tree and traverse downwards until we 
+        // reach a leaf node. We traverse left for every '0' we read in the
+        // binary, and right for every '1'.
         TreeNode* cur = hfTree;
         while(!cur->leafNode) {
-            if(buffer & (1<<bitIdx--)) {
-                // std::cout<<"traverse right"<<std::endl;
+            if(buffer & (1<<bitIdx--))
                 cur = cur->right;
-            }
-            else {
-                // std::cout<<"traverse left"<<std::endl;
+            else
                 cur = cur->left;
-            }
 
+            // Finished with this byte
             if(bitIdx < 0) {
                 bitIdx = 7;
                 buffer = data[++dataPos];
             }
         }
 
+        // Write the decoded character to output to buffer. If we ended on the
+        // zero node, we read the next byte which will correspond to a new
+        // character to be added to the tree.
         char temp = 0;
         if(cur->zeroNode) {
-            // std::cout<<"Reached zero node"<<std::endl;
+            // Read next 8 bits
             for(int i=0; i<8; i++) {
-                // std::cout<<"i: "<<i<<" bit: "<<((buffer&(1<<bitIdx))?"1 ":"0 ")<<std::bitset<8>((int)temp)<<std::endl;
                 if(buffer&(1<<bitIdx--)) temp |= 1;
                 if(i<7) temp <<= 1;
 
+                // Finished with this byte
                 if(bitIdx < 0) {
                     bitIdx = 7;
                     buffer = data[++dataPos];
-                    // std::cout<<"Shift. New buffer: "<<buffer<<std::endl;
                 }
             }
-            // std::cout<<"new char: "<<temp<<"("<<(int)(unsigned char)temp<<")"<<std::endl;
             
-            // Create new leaf node
+            // Create new leaf nodes. Same process as encoding
             TreeNode* left = new TreeNode(0,0,zeroNode->order - 2,zeroNode,1,0);  
             TreeNode* right = new TreeNode(temp,1,zeroNode->order - 1,zeroNode,0,0);  
             cur = zeroNode;
 
+            // Convert old zero node into internal node
             zeroNode->leafNode = 0;
             zeroNode->zeroNode = 0;
             zeroNode->left = left;
             zeroNode->right = right;
 
+            // Update symbol table to point to entry in the tree
             symbolTable[temp] = right;
             zeroNode = left;
         }
         else {
+            // The character already exists in the tree, so we can just output
+            // it to the buffer.
             temp = cur->c;    
         }
 
-        // std::cout << "SYMBOL: " << temp << std::endl;
+        // Check for encoded EOF character
         if(temp == END_TEXT) return output;
+
+        // Write to output buffer and update frequencies in the tree
         output->push_back(temp);
         update_freq(cur,hfTree);
+    }
+
+    // Deallocate tree
+    std::stack<TreeNode*> S;
+    S.push(hfTree);
+    while(!S.empty()) {
+        TreeNode* cur = S.top();
+        S.pop();
+
+        if(cur->left) S.push(cur->left);
+        if(cur->right) S.push(cur->right);
+
+        delete cur;
     }
 
     return output;
@@ -318,10 +342,6 @@ int main (int argc, char *argv[]) {
 
     std::cout << "Writing to disk..." << std::endl;
 
-    // for(char c:*encoded)
-    //     std::cout << std::bitset<8>((int)c) << " ";
-    // std::cout<<std::endl;
-
     // Write compressed data to file
     std::ofstream ofs("compr_fgk.dat", std::ios::out | std::ios::binary);
     ofs.write(encoded->data(), encoded->size());
@@ -349,16 +369,17 @@ int main (int argc, char *argv[]) {
     // Decode file
     std::vector<char>* decoded = decode(buffer2, data_size2);
  
-    // for(char c:*decoded)
-    //     std::cout << std::bitset<8>((int)c) << " ";
-    // std::cout<<std::endl;
-    
+
     std::cout << "Testing files..." << std::endl;
 
     // Check for inconsistencies
     bool matching = true;
     for(int i=0; i<data_size; i++) {
         if(buffer[i] != (*decoded)[i]) {
+            std::cerr << "Mismatching character at pos:" << i << std::endl;
+            std::cerr << "Original: " << std::hex << buffer[i] << std::endl;
+            std::cerr << "Decoded: " << std::hex << (*decoded)[i] << std::endl;
+
             matching = false;
             break;
         }
@@ -393,18 +414,6 @@ int main (int argc, char *argv[]) {
     delete[] buffer2;
     delete encoded;
     delete decoded;
-
-    // std::stack<TreeNode*> S;
-    // S.push(HuffmanTree);
-    // while(!S.empty()) {
-    //     TreeNode* cur = S.top();
-    //     S.pop();
-    //
-    //     if(cur->left) S.push(cur->left);
-    //     if(cur->right) S.push(cur->right);
-    //
-    //     delete cur;
-    // }
 
     return 0;
 }

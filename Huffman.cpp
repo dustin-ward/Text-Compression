@@ -1,3 +1,25 @@
+// Static Huffman Encoding
+// Author: Dustin Ward
+// Date: March 24th, 2023
+//
+// This is an implementation of static huffman encoding for my CPSC4660
+// (Database Managment Systems) class. The goal of this project is to
+// demonstrate the performance of various text compression methods.
+//
+// The static Huffman encoding algorithm works by first generating a frequency
+// table from the source file, then building a Huffman tree from it. This tree
+// is a binary tree, with the leaf nodes representing the symbols we see in the
+// source file. Each symbol is then encoded as the sequence of left/right 
+// traversals through the tree to reach its corresponding node. By storing the
+// frequent symbols near the top of the tree, we can shorten (on average) the
+// number of bits needed to represent it.
+//
+// This file (when supplied with a source file as the first argument) will
+// encode it using this static huffman algorithm, and write it to file. The 
+// file has the name "compr_huffman.dat". Then the file will be decoded and
+// written to disk again as "orig_huffman.dat". We can diff the original source
+// file with "orig_huffman.dat" to ensure the process has not lost any data.
+
 #include <bits/stdc++.h>
 
 // Representation of a node in the Huffman tree
@@ -22,7 +44,7 @@ struct CompareTreeNode {
     }
 };
 
-const char END_TEXT = 3;
+const char END_TEXT = -1;
 
 // Scan through each character in the input data and lookup the Huffman code
 // corresponding to it. We need to use a byte as a buffer to write the
