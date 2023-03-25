@@ -14,6 +14,12 @@
 // frequent symbols near the top of the tree, we can shorten (on average) the
 // number of bits needed to represent it.
 //
+// It is worth noting that my implementation does not encode the representation
+// of the Huffman tree we used to encode the source file. In a real-world 
+// scenario we would need to also save some representation of the tree so that
+// the decoder can actually function. Lelewer & Hirschberg (1987) suggest that
+// an optimal representation of the tree takes 2n bits.
+//
 // This file (when supplied with a source file as the first argument) will
 // encode it using this static huffman algorithm, and write it to file. The 
 // file has the name "compr_huffman.dat". Then the file will be decoded and
@@ -21,6 +27,7 @@
 // file with "orig_huffman.dat" to ensure the process has not lost any data.
 
 #include <bits/stdc++.h>
+#include <ctime>
 
 // Representation of a node in the Huffman tree
 struct TreeNode {
@@ -212,7 +219,9 @@ int main (int argc, char *argv[]) {
 
 
     // Encode file
+    std::clock_t encode_start = std::clock();
     std::vector<char>* encoded = encode(Codes, buffer, data_size+1);
+    double encode_time = (std::clock() - encode_start)/(double)CLOCKS_PER_SEC;
 
     std::cout << "Writing to disk..." << std::endl;
 
@@ -241,7 +250,9 @@ int main (int argc, char *argv[]) {
     std::cout << "Decompressing file..." << std::endl; 
 
     // Decode file
+    std::clock_t decode_start = std::clock();
     std::vector<char>* decoded = decode(HuffmanTree, buffer2, data_size2);
+    double decode_time = (std::clock() - decode_start)/(double)CLOCKS_PER_SEC;
  
     std::cout << "Testing files..." << std::endl;
 
@@ -268,6 +279,12 @@ int main (int argc, char *argv[]) {
                 << "Reduction: " << "| " << std::fixed << std::setprecision(2)
                 << 100 - ((double)data_size2 / data_size) * 100 << "%"
                 << std::endl;
+        std::cout << "======================================\n";
+        std::cout << "Encoding Duration: " 
+                << std::fixed << std::setprecision(2) << encode_time << "s\n";
+        std::cout << "Decoding Duration: " 
+                << std::fixed << std::setprecision(2) << decode_time << "s\n";
+        std::cout<<std::endl;
     }
 
     // Write decoded file to disk

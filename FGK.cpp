@@ -338,7 +338,9 @@ int main (int argc, char *argv[]) {
 
 
     // Encode file
+    std::clock_t encode_start = std::clock();
     std::vector<char>* encoded = encode(buffer, data_size+1);
+    double encode_time = (std::clock() - encode_start)/(double)CLOCKS_PER_SEC;
 
     std::cout << "Writing to disk..." << std::endl;
 
@@ -367,7 +369,9 @@ int main (int argc, char *argv[]) {
     std::cout << "Decompressing file..." << std::endl; 
 
     // Decode file
+    std::clock_t decode_start = std::clock();
     std::vector<char>* decoded = decode(buffer2, data_size2);
+    double decode_time = (std::clock() - decode_start)/(double)CLOCKS_PER_SEC;
  
 
     std::cout << "Testing files..." << std::endl;
@@ -399,6 +403,12 @@ int main (int argc, char *argv[]) {
                 << "Reduction: " << "| " << std::fixed << std::setprecision(2)
                 << 100 - ((double)data_size2 / data_size) * 100 << "%"
                 << std::endl;
+        std::cout << "======================================\n";
+        std::cout << "Encoding Duration: " 
+                << std::fixed << std::setprecision(2) << encode_time << "s\n";
+        std::cout << "Decoding Duration: " 
+                << std::fixed << std::setprecision(2) << decode_time << "s\n";
+        std::cout<<std::endl;
     }
 
     // Write decoded file to disk
